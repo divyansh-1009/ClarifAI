@@ -1,7 +1,7 @@
 from django.urls import path
-from .views import GenerateLatexView, RenderAssessmentView
+from .views import GenerateAssessmentFromTopicView, RenderAssessmentFromTopicView
 
 urlpatterns = [
-    path('generate-json/', GenerateLatexView.as_view(), name='generate-json'),
-    path('render/', RenderAssessmentView.as_view(), name='render-assessment'),
+    path('generate-from-topic/', GenerateAssessmentFromTopicView.as_view(), name='generate-from-topic'),
+    path('render-from-topic/', RenderAssessmentFromTopicView.as_view(), name='render-from-topic'),
 ]
