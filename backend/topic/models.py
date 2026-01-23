@@ -2,8 +2,6 @@ import uuid
 from django.db import models
 from django.conf import settings
 
-def pdf_upload_path(instance, filename):
-    return f"topic_{instance.topic.id}/{filename}"
 
 class Topic(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -21,12 +19,12 @@ class Topic(models.Model):
 class PDF(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     topic = models.ForeignKey(Topic, on_delete=models.CASCADE, related_name="pdfs")
-    file = models.FileField(upload_to=pdf_upload_path)
-    is_generated = models.BooleanField(default=False)
+    embedding_id = models.CharField(max_length=255, null=True, blank=True)
+    is_processed = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"PDF for {self.topic} ({self.id})"
+        return f"Embedding for {self.topic} ({self.id})"
