@@ -1,7 +1,7 @@
 import os
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from .models import Topic, PDF
 from .serializers import TopicSerializer
 from .vector_service import generate_and_store_embedding
@@ -19,7 +19,7 @@ class TopicCreateView(generics.CreateAPIView):
     queryset = Topic.objects.all()
     serializer_class = TopicSerializer
     permission_classes = [permissions.IsAuthenticated]
-    parser_classes = [MultiPartParser, FormParser]
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
 
     def post(self, request, *args, **kwargs):
         class_name = request.data.get('class_name')
