@@ -36,17 +36,23 @@ class TopicCreateView(generics.CreateAPIView):
             if not notes.name.lower().endswith('.pdf'):
                 topic_obj.delete()
                 return Response({'error': 'Only PDF files are allowed for notes.'}, status=status.HTTP_400_BAD_REQUEST)
-            pdf_obj = PDF.objects.create(topic=topic_obj)
             try:
+                from PyPDF2 import PdfReader
                 pdf_reader = PdfReader(notes)
                 text = " ".join(page.extract_text() or '' for page in pdf_reader.pages)
                 if text.strip():
-                    store_vector_embedding(pdf_obj, text)
+                    from knowledge.models import KnowledgeNote
+                    from knowledge.vector_utils import generate_embedding, upsert_note_vector
+                    note = KnowledgeNote.objects.create(user=user, topic=topic_obj, content=text)
+                    embedding = generate_embedding(text)
+                    upsert_note_vector(note.id, embedding, {
+                        "user_id": str(user.id),
+                        "topic_id": str(topic_obj.id),
+                    })
                 else:
                     raise Exception("No text found in PDF")
             except Exception as e:
                 topic_obj.delete()
-                pdf_obj.delete()
                 return Response({'error': f'Failed to process PDF and generate embedding: {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(topic_obj)

@@ -50,6 +50,8 @@ INSTALLED_APPS = [
     'accounts',
     'assessment',
     'topic',
+    'knowledge',
+    'query',
 ]
 
 MIDDLEWARE = [
