@@ -7,3 +7,5 @@ class QueryRequestSerializer(serializers.Serializer):
 class QueryResponseSerializer(serializers.Serializer):
     answer = serializers.CharField()
     context = serializers.ListField(child=serializers.CharField())
+    used_rag = serializers.BooleanField()
+

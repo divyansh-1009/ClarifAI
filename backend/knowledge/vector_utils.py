@@ -5,17 +5,28 @@ import os
 MODEL_NAME = "all-MiniLM-L6-v2"
 model = SentenceTransformer(MODEL_NAME)
 
-# Pinecone setup (set your API key and environment in env variables or here directly)
 PINECONE_API_KEY = os.getenv("PINECONE_API_KEY")
 PINECONE_ENV = os.getenv("PINECONE_ENV", "gcp-starter")
 INDEX_NAME = os.getenv("PINECONE_INDEX_NAME", "knowledge-notes")
 
-pinecone.init(api_key=PINECONE_API_KEY, environment=PINECONE_ENV)
+try:
+    if PINECONE_API_KEY:
+        pc = pinecone.Pinecone(api_key=PINECONE_API_KEY)
+    else:
+        pc = None
+except Exception as e:
+    pc = None
 
 def get_or_create_index():
-    if INDEX_NAME not in pinecone.list_indexes():
-        pinecone.create_index(INDEX_NAME, dimension=384, metric="cosine")
-    return pinecone.Index(INDEX_NAME)
+    if not pc:
+        return None
+    if INDEX_NAME not in pc.list_indexes().names():
+        pc.create_index(
+            name=INDEX_NAME, 
+            dimension=384, 
+            metric="cosine"
+        )
+    return pc.Index(INDEX_NAME)
 
 def generate_embedding(text):
     embedding = model.encode(text)

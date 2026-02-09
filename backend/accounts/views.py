@@ -4,19 +4,36 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .serializers import RegisterSerializer, UserSerializer
+from .serializers import (
+    EmailOTPSerializer,
+    VerifyEmailOTPSerializer,
+    UserSerializer,
+)
 
 
-class RegisterView(generics.CreateAPIView):
+class RegisterOTPView(generics.CreateAPIView):
+    """
+    Send OTP to email for verification.
+    """
     permission_classes = (AllowAny,)
-    serializer_class = RegisterSerializer
+    serializer_class = EmailOTPSerializer
+
+
+class VerifyEmailOTPView(generics.CreateAPIView):
+    """
+    Verify OTP and register user.
+    """
+    permission_classes = (AllowAny,)
+    serializer_class = VerifyEmailOTPSerializer
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+        
         refresh = RefreshToken.for_user(user)
         return Response({
+            "message": "Registration successful.",
             "user": UserSerializer(user).data,
             "refresh": str(refresh),
             "access": str(refresh.access_token),
