@@ -1,0 +1,131 @@
+# ──────────────────────────────────────────────
+#  Django / Python
+# ──────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+static_root/
+
+# Django migrations (keep __init__.py, ignore auto-generated migrations if preferred)
+# Uncomment the next line if you don't want to track migrations:
+# */migrations/*.py
+# !*/migrations/__init__.py
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.eggs/
+wheels/
+
+# Testing
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+
+# Type checkers / linters
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# Jupyter
+.ipynb_checkpoints
+
+# ──────────────────────────────────────────────
+#  Flutter / Dart
+# ──────────────────────────────────────────────
+# Build outputs
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins
+frontend/.flutter-plugins-dependencies
+
+# Generated files
+frontend/*.g.dart
+frontend/*.freezed.dart
+
+# Pub cache / dependencies
+frontend/.packages
+frontend/.pub-cache/
+frontend/.pub/
+frontend/pubspec.lock   # remove this line if you want to lock deps in version control
+
+# Android
+frontend/android/.gradle/
+frontend/android/local.properties
+frontend/android/captures/
+frontend/android/key.properties
+frontend/android/**/*.keystore
+frontend/android/**/*.jks
+frontend/android/app/google-services.json
+
+# iOS
+frontend/ios/Pods/
+frontend/ios/.symlinks/
+frontend/ios/Flutter/flutter_export_environment.sh
+frontend/ios/Flutter/Generated.xcconfig
+frontend/ios/GoogleService-Info.plist
+
+# macOS
+frontend/macos/Flutter/GeneratedPluginRegistrant.swift
+frontend/macos/Flutter/ephemeral/
+
+# Windows
+frontend/windows/flutter/generated_plugin_registrant.cc
+frontend/windows/flutter/generated_plugin_registrant.h
+frontend/windows/flutter/generated_plugins.cmake
+
+# Linux
+frontend/linux/flutter/generated_plugin_registrant.cc
+frontend/linux/flutter/generated_plugin_registrant.h
+frontend/linux/flutter/generated_plugins.cmake
+
+# Web
+frontend/web/flutter_service_worker.js
+
+# ──────────────────────────────────────────────
+#  Secrets & environment files
+# ──────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# ──────────────────────────────────────────────
+#  IDEs & editors
+# ──────────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+*.ipr
+*.iws
+.DS_Store
+Thumbs.db
