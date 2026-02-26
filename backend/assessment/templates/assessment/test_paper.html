@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ metadata.title }}</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Times New Roman", serif;
+        line-height: 1.6;
+        padding: 40px;
+        max-width: 900px;
+        margin: 0 auto;
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+        border-bottom: 2px solid #000;
+        padding-bottom: 15px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+        margin-bottom: 15px;
+      }
+
+      .student-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin: 15px 0;
+        font-size: 14px;
+      }
+
+      .info-row {
+        display: flex;
+        gap: 10px;
+      }
+
+      .info-label {
+        font-weight: bold;
+        min-width: 100px;
+      }
+
+      .meta-info {
+        text-align: center;
+        margin: 15px 0;
+        font-size: 14px;
+      }
+
+      .meta-info span {
+        margin: 0 15px;
+        font-weight: bold;
+      }
+
+      .instructions {
+        margin: 25px 0;
+        padding: 10px;
+        border: 1px solid #000;
+      }
+
+      .question {
+        margin: 25px 0;
+        page-break-inside: avoid;
+      }
+
+      .question-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        font-weight: bold;
+      }
+
+      .question-text {
+        font-size: 15px;
+        margin: 10px 0;
+        line-height: 1.8;
+      }
+
+      .options {
+        margin: 15px 0 15px 20px;
+      }
+
+      .option {
+        margin: 8px 0;
+      }
+
+      .answer-space {
+        margin-top: 15px;
+        min-height: 80px;
+        border: 1px solid #000;
+        padding: 10px;
+      }
+
+      .answer-space::before {
+        content: "Answer:";
+        font-weight: bold;
+      }
+
+      .footer {
+        margin-top: 40px;
+        padding-top: 15px;
+        border-top: 2px solid #000;
+        text-align: center;
+        font-size: 11px;
+      }
+
+      @media print {
+        body {
+          padding: 20px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="header">
+      <h1>{{ metadata.title }}</h1>
+
+      <div class="student-info">
+        <div class="info-row">
+          <span class="info-label">Name:</span>
+          <span>{{ student_name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Class:</span>
+          <span>{{ class_name }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Subject:</span>
+          <span>{{ subject }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Topic:</span>
+          <span>{{ topic }}</span>
+        </div>
+      </div>
+
+      <div class="meta-info">
+        <span>Total Marks: {{ metadata.total_marks }}</span>
+        <span>Time: {{ metadata.estimated_time_minutes }} minutes</span>
+      </div>
+    </div>
+
+    <div class="instructions">
+      <strong>Instructions:</strong>
+      <ul style="margin-left: 20px; margin-top: 5px">
+        <li>Read all questions carefully before answering.</li>
+        <li>
+          Write your answers in the space provided or on separate sheets if
+          needed.
+        </li>
+        <li>Show all working for problem-solving questions.</li>
+        <li>Marks allocated to each question are shown in brackets.</li>
+      </ul>
+    </div>
+
+    {% for question in questions %}
+    <div class="question">
+      <div class="question-header">
+        <span>Question {{ forloop.counter }}</span>
+        <span>[{{ question.marks }} marks]</span>
+      </div>
+
+      <div class="question-text">{{ question.question_text|safe }}</div>
+
+      {% if question.type == "multiple_choice" and question.options %}
+      <div class="options">
+        {% for option in question.options %}
+        <div class="option">
+          <strong>{{ forloop.counter|add:64|slice:":1" }}.</strong> {{
+          option|safe }}
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="answer-space"></div>
+      {% endif %}
+    </div>
+    {% endfor %}
+
+    <div class="footer">
+      <p>End of Assessment</p>
+    </div>
+
+    <script>
+      // Configure MathJax to process LaTeX
+      MathJax = {
+        tex: {
+          inlineMath: [["$", "$"]],
+          displayMath: [["$$", "$$"]],
+        },
+      };
+    </script>
+  </body>
+</html>
