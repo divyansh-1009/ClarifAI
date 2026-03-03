@@ -2,7 +2,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from django.views import View
+from rest_framework.renderers import TemplateHTMLRenderer
 from django.shortcuts import render
 import google.generativeai as genai
 import os
@@ -101,14 +101,15 @@ class GenerateAssessmentFromTopicView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class RenderAssessmentFromTopicView(View):
+class RenderAssessmentFromTopicView(APIView):
+    permission_classes = [IsAuthenticated]
+    renderer_classes = [TemplateHTMLRenderer]
+
     def get(self, request):
-        if not request.user.is_authenticated:
-            return render(request, 'assessment/error.html', {'error': 'Authentication required.'}, status=401)
         user = request.user
         topic_obj = Topic.objects.filter(user=user).order_by('-created_at').first()
         if not topic_obj:
-            return render(request, 'assessment/error.html', {'error': 'No topic found for this user.'}, status=404)
+            return Response({'error': 'No topic found for this user.'}, template_name='assessment/error.html', status=status.HTTP_404_NOT_FOUND)
 
         name = user.username
         class_name = topic_obj.class_name
@@ -117,7 +118,7 @@ class RenderAssessmentFromTopicView(View):
         difficulty = request.GET.get('difficulty', 'medium')
 
         if not subject:
-            return render(request, 'assessment/error.html', {'error': 'Subject is required.'}, status=400)
+            return Response({'error': 'Subject is required.'}, template_name='assessment/error.html', status=status.HTTP_400_BAD_REQUEST)
 
         try:
             assessment_data = get_assessment_from_gemini(name, class_name, subject, topic, difficulty)
@@ -131,6 +132,6 @@ class RenderAssessmentFromTopicView(View):
                 'metadata': assessment_json.get('metadata', {}),
                 'questions': assessment_json.get('questions', []),
             }
-            return render(request, 'assessment/assessment_paper.html', context)
+            return Response(context, template_name='assessment/assessment_paper.html', status=status.HTTP_200_OK)
         except Exception as e:
-            return render(request, 'assessment/error.html', {'error': str(e)}, status=500)
+            return Response({'error': str(e)}, template_name='assessment/error.html', status=status.HTTP_500_INTERNAL_SERVER_ERROR)

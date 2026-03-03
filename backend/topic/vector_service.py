@@ -3,10 +3,33 @@ import uuid
 from sentence_transformers import SentenceTransformer
 from pinecone import Pinecone
 
-pinecone_client = Pinecone(api_key=os.getenv('PINECONE_API_KEY'))
-index_name = os.getenv('PINECONE_INDEX_NAME', 'clarif-ai')
-index = pinecone_client.Index(index_name)
+# Initialize model at startup
 model = SentenceTransformer('all-MiniLM-L6-v2')
+
+# Initialize Pinecone client lazily (only when needed)
+pinecone_client = None
+index = None
+
+def _get_pinecone_index():
+    """
+    Lazily initialize Pinecone client and index.
+    Allows server to start even if Pinecone credentials are not configured.
+    """
+    global pinecone_client, index
+    
+    if pinecone_client is None:
+        api_key = os.getenv('PINECONE_API_KEY')
+        if not api_key or api_key == 'your_pinecone_api_key_here':
+            raise ValueError(
+                "Pinecone API key not configured. "
+                "Please set PINECONE_API_KEY in your .env file"
+            )
+        
+        pinecone_client = Pinecone(api_key=api_key)
+        index_name = os.getenv('PINECONE_INDEX_NAME', 'clarif-ai')
+        index = pinecone_client.Index(index_name)
+    
+    return index
 
 
 def generate_and_store_embedding(pdf_obj, text):
@@ -15,6 +38,7 @@ def generate_and_store_embedding(pdf_obj, text):
     Returns the embedding_id used for storage.
     """
     try:
+        index = _get_pinecone_index()
         embedding = model.encode(text).tolist()
         embedding_id = str(uuid.uuid4())
         
@@ -38,6 +62,7 @@ def retrieve_embeddings(query_text, top_k=5):
     Retrieve similar embeddings from Pinecone.
     """
     try:
+        index = _get_pinecone_index()
         query_embedding = model.encode(query_text).tolist()
         results = index.query(vector=query_embedding, top_k=top_k, include_metadata=True)
         return results
