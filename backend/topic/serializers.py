@@ -4,7 +4,8 @@ from .models import Topic, PDF
 class PDFSerializer(serializers.ModelSerializer):
     class Meta:
         model = PDF
-        fields = ['id', 'file', 'is_generated', 'created_at']
+        fields = ['id', 'embedding_id', 'is_processed', 'created_at']
+        read_only_fields = ['id', 'created_at']
 
 class TopicSerializer(serializers.ModelSerializer):
     pdfs = PDFSerializer(many=True, read_only=True)
