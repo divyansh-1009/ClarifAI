@@ -1,21 +1,18 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
+from django.views import View
 from django.shortcuts import render
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 import google.generativeai as genai
-import json
 import os
+import json
+from topic.models import Topic
+
 
 def get_assessment_from_gemini(name, class_name, subject, topic, difficulty):
     genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
-    
-    model = genai.GenerativeModel(
-        'gemini-2.5-flash'
-    )
-    
+    model = genai.GenerativeModel('gemini-2.5-flash')
     prompt = f"""You are an expert academic assessment generator for the Indian school and college curriculum.
 Generate a highly structured assessment with the following parameters:
 
@@ -34,10 +31,10 @@ MATH AND FORMATTING RULES:
 - Write all text in standard Markdown.
 - Wrap all inline math equations in single dollar signs (e.g., $x^2 + y^2 = z^2$).
 - Wrap all block/display math equations in double dollar signs (e.g., $$E=mc^2$$).
-- CRITICAL: You must double-escape all LaTeX backslashes so the output remains valid JSON. For example, output \\\\frac{{1}}{{2}} instead of \\frac{{1}}{{2}}.
+- CRITICAL: The output must remain a valid JSON. For example, output \\\\frac{{1}}{{2}} instead of \\frac{{1}}{{2}}.
 
 OUTPUT FORMAT:
-Return ONLY a valid, minified JSON object. Do not include markdown code blocks (like ```json), explanations, or any other text. 
+Return ONLY a valid, minified JSON object. Do not include markdown code blocks (like ```json), explanations, or any other text.
 Follow this exact JSON schema:
 {{
     "metadata": {{
@@ -56,32 +53,36 @@ Follow this exact JSON schema:
     ]
 }}
 """
-    
     response = model.generate_content(prompt)
-    assessment_json = response.text
-    
-    return assessment_json
+    return response.text
 
 
-class GenerateLatexView(APIView):
-    permission_classes = [AllowAny]  # Allow unauthenticated access for testing
-    
+class GenerateAssessmentFromTopicView(APIView):
+    permission_classes = [IsAuthenticated]
+
     def post(self, request):
-        name = request.data.get('name')
-        class_name = request.data.get('class')
-        subject = request.data.get('subject')
-        topic = request.data.get('topic')
-        difficulty = request.data.get('difficulty')
-        
-        if not all([name, class_name, subject, topic]):
+        user = request.user
+        topic_obj = Topic.objects.filter(user=user).order_by('-created_at').first()
+        if not topic_obj:
             return Response({
                 'success': False,
-                'error': 'All fields are required: name, class, subject, topic'
+                'error': 'No topic found for this user.'
+            }, status=status.HTTP_404_NOT_FOUND)
+
+        name = user.username
+        class_name = topic_obj.class_name
+        topic = topic_obj.topic
+        subject = request.data.get('subject')
+        difficulty = request.data.get('difficulty', 'medium')
+
+        if not subject:
+            return Response({
+                'success': False,
+                'error': 'Subject is required.'
             }, status=status.HTTP_400_BAD_REQUEST)
-        
+
         try:
             assessment_data = get_assessment_from_gemini(name, class_name, subject, topic, difficulty)
-            
             return Response({
                 'success': True,
                 'assessment_data': assessment_data,
@@ -93,7 +94,6 @@ class GenerateLatexView(APIView):
                     'difficulty': difficulty
                 }
             }, status=status.HTTP_200_OK)
-                
         except Exception as e:
             return Response({
                 'success': False,
@@ -101,54 +101,36 @@ class GenerateLatexView(APIView):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-@method_decorator(csrf_exempt, name='dispatch')
-class RenderAssessmentView(APIView):
-    permission_classes = [AllowAny]
-    
-    def post(self, request):
-        name = request.data.get('name')
-        class_name = request.data.get('class')
-        subject = request.data.get('subject')
-        topic = request.data.get('topic')
-        difficulty = request.data.get('difficulty', 'medium')
-        
-        if not all([name, class_name, subject, topic]):
-            return render(request, 'assessment/error.html', {
-                'error': 'All fields are required: name, class, subject, topic'
-            })
-        
+class RenderAssessmentFromTopicView(View):
+    def get(self, request):
+        if not request.user.is_authenticated:
+            return render(request, 'assessment/error.html', {'error': 'Authentication required.'}, status=401)
+        user = request.user
+        topic_obj = Topic.objects.filter(user=user).order_by('-created_at').first()
+        if not topic_obj:
+            return render(request, 'assessment/error.html', {'error': 'No topic found for this user.'}, status=404)
+
+        name = user.username
+        class_name = topic_obj.class_name
+        topic = topic_obj.topic
+        subject = request.GET.get('subject')
+        difficulty = request.GET.get('difficulty', 'medium')
+
+        if not subject:
+            return render(request, 'assessment/error.html', {'error': 'Subject is required.'}, status=400)
+
         try:
-            # Get assessment JSON from Gemini
-            assessment_json_str = get_assessment_from_gemini(name, class_name, subject, topic, difficulty)
-            
-            # Clean up markdown code blocks if present
-            if assessment_json_str.startswith('```json'):
-                assessment_json_str = assessment_json_str.replace('```json', '').replace('```', '').strip()
-            elif assessment_json_str.startswith('```'):
-                assessment_json_str = assessment_json_str.replace('```', '').strip()
-            
-            # Parse JSON
-            assessment_data = json.loads(assessment_json_str)
-            
-            # Prepare context for template
+            assessment_data = get_assessment_from_gemini(name, class_name, subject, topic, difficulty)
+            assessment_json = json.loads(assessment_data)
             context = {
-                'student_name': name,
+                'name': name,
                 'class_name': class_name,
                 'subject': subject,
                 'topic': topic,
                 'difficulty': difficulty,
-                'metadata': assessment_data.get('metadata', {}),
-                'questions': assessment_data.get('questions', []),
+                'metadata': assessment_json.get('metadata', {}),
+                'questions': assessment_json.get('questions', []),
             }
-            
-            return render(request, 'assessment/test_paper.html', context)
-                
-        except json.JSONDecodeError as e:
-            return render(request, 'assessment/error.html', {
-                'error': f'Invalid JSON response: {str(e)}',
-                'raw_data': assessment_json_str
-            })
+            return render(request, 'assessment/assessment_paper.html', context)
         except Exception as e:
-            return render(request, 'assessment/error.html', {
-                'error': str(e)
-            })
+            return render(request, 'assessment/error.html', {'error': str(e)}, status=500)
