@@ -1,9 +1,32 @@
 import 'package:flutter/material.dart';
-import './pages/quiz_page.dart';
-import './services/api_service.dart';
-import './models/assessment_model.dart';
+import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 
-void main() {
+import 'services/auth_provider.dart';
+import 'services/api_service.dart';
+import 'widgets/app_theme.dart';
+import 'pages/splash_page.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Lock to portrait orientations for a consistent mobile experience
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  // Transparent status bar with dark icons (adapts to theme)
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light, // iOS
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   runApp(const ClarifAIApp());
 }
 
@@ -12,95 +35,148 @@ class ClarifAIApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'ClarifAI Assessment',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
-        useMaterial3: true,
-      ),
-      home: const AssessmentEntryPage(),
+    return MultiProvider(
+      providers: [
+        // Core API service — single instance shared across the app
+        Provider<ApiService>(
+          create: (_) => ApiService(),
+        ),
+
+        // Auth state — depends on ApiService
+        ChangeNotifierProxyProvider<ApiService, AuthProvider>(
+          create: (ctx) => AuthProvider(
+            apiService: ctx.read<ApiService>(),
+          ),
+          update: (ctx, api, previous) =>
+              previous ?? AuthProvider(apiService: api),
+        ),
+      ],
+      child: const _AppView(),
     );
   }
 }
 
-class AssessmentEntryPage extends StatefulWidget {
-  const AssessmentEntryPage({super.key});
+class _AppView extends StatefulWidget {
+  const _AppView();
 
   @override
-  State<AssessmentEntryPage> createState() => _AssessmentEntryPageState();
+  State<_AppView> createState() => _AppViewState();
 }
 
-class _AssessmentEntryPageState extends State<AssessmentEntryPage> {
-  bool _isLoading = false;
-  final ApiService _apiService = ApiService();
+class _AppViewState extends State<_AppView> with WidgetsBindingObserver {
+  // Track system brightness for status bar icon adaptation
+  late Brightness _brightness;
 
-  Future<void> _startQuiz() async {
-    setState(() => _isLoading = true);
-    try {
-      final assessment = await _apiService.fetchAssessment();
-      if (!mounted) return;
-      
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => QuizPage(assessment: assessment),
-        ),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _brightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+  }
+
+  @override
+  void didChangePlatformBrightness() {
+    super.didChangePlatformBrightness();
+    final newBrightness =
+        WidgetsBinding.instance.platformDispatcher.platformBrightness;
+    if (newBrightness != _brightness) {
+      setState(() => _brightness = newBrightness);
+      _updateSystemUI(newBrightness);
     }
+  }
+
+  void _updateSystemUI(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    SystemChrome.setSystemUIOverlayStyle(
+      SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness:
+            isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor:
+            isDark ? AppColors.darkSurface : AppColors.surface,
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('ClarifAI Quiz Assistant'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.psychology_outlined, size: 100, color: Colors.teal),
-            const SizedBox(height: 24),
-            const Text(
-              'Interactive Assessment',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Analyze your progress with AI-generated questions from your topic.',
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16, color: Colors.grey),
-            ),
-            const SizedBox(height: 48),
-            if (_isLoading)
-              const CircularProgressIndicator()
-            else
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: _startQuiz,
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  ),
-                  child: const Text('Fetch My Quiz', style: TextStyle(fontSize: 18)),
-                ),
-              ),
-          ],
-        ),
-      ),
+    return MaterialApp(
+      // ── App metadata ─────────────────────────────
+      title: 'ClarifAI',
+      debugShowCheckedModeBanner: false,
+
+      // ── Themes ───────────────────────────────────
+      theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: ThemeMode.system,
+
+      // ── Entry point ──────────────────────────────
+      home: const SplashPage(),
+
+      // ── Global builder: applies safe-area background ─
+      builder: (context, child) {
+        // Ensure text scale factor doesn't go beyond readable limits
+        final mediaQuery = MediaQuery.of(context);
+        final clampedTextScale =
+            mediaQuery.textScaler.clamp(minScaleFactor: 0.85, maxScaleFactor: 1.15);
+        return MediaQuery(
+          data: mediaQuery.copyWith(textScaler: clampedTextScale),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+
+      // ── Scroll behaviour ──────────────────────────
+      scrollBehavior: const _AppScrollBehaviour(),
     );
+  }
+}
+
+// ─────────────────────────────────────────────
+//  Custom scroll behaviour
+//  • Keeps default glow on Android
+//  • Removes overscroll glow on iOS for a native feel
+// ─────────────────────────────────────────────
+
+class _AppScrollBehaviour extends ScrollBehavior {
+  const _AppScrollBehaviour();
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) {
+    switch (getPlatform(context)) {
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+        return const BouncingScrollPhysics();
+      default:
+        return const ClampingScrollPhysics();
+    }
+  }
+
+  @override
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) {
+    // Use stretching overscroll on Android 12+ (Material You)
+    switch (getPlatform(context)) {
+      case TargetPlatform.android:
+        return StretchingOverscrollIndicator(
+          axisDirection: details.direction,
+          child: child,
+        );
+      default:
+        return child;
+    }
   }
 }
