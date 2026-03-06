@@ -3,10 +3,8 @@ import uuid
 from sentence_transformers import SentenceTransformer
 from pinecone import Pinecone
 
-# Initialize model at startup
 model = SentenceTransformer('all-MiniLM-L6-v2')
 
-# Initialize Pinecone client lazily (only when needed)
 pinecone_client = None
 index = None
 
