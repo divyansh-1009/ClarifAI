@@ -18,6 +18,15 @@ class RegisterOTPView(generics.CreateAPIView):
     permission_classes = (AllowAny,)
     serializer_class = EmailOTPSerializer
 
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        return Response(
+            {"message": "OTP sent to email."},
+            status=status.HTTP_200_OK,
+        )
+
 
 class VerifyEmailOTPView(generics.CreateAPIView):
     """

@@ -7,7 +7,6 @@ from django.shortcuts import render
 import google.generativeai as genai
 import os
 import json
-from topic.models import Topic
 
 
 def get_assessment_from_gemini(name, class_name, subject, topic, difficulty):
@@ -62,23 +61,28 @@ class GenerateAssessmentFromTopicView(APIView):
 
     def post(self, request):
         user = request.user
-        topic_obj = Topic.objects.filter(user=user).order_by('-created_at').first()
-        if not topic_obj:
-            return Response({
-                'success': False,
-                'error': 'No topic found for this user.'
-            }, status=status.HTTP_404_NOT_FOUND)
-
         name = user.username
-        class_name = topic_obj.class_name
-        topic = topic_obj.topic
-        subject = request.data.get('subject')
-        difficulty = request.data.get('difficulty', 'medium')
+        class_name = request.data.get('class_name', 'Not specified')
+        subject = (request.data.get('subject') or '').strip()
+        topic = (request.data.get('topic') or '').strip()
+        difficulty = (request.data.get('difficulty') or 'medium').strip().lower()
 
         if not subject:
             return Response({
                 'success': False,
                 'error': 'Subject is required.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if not topic:
+            return Response({
+                'success': False,
+                'error': 'Topic is required.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if difficulty not in {'easy', 'medium', 'hard'}:
+            return Response({
+                'success': False,
+                'error': 'Difficulty must be easy, medium, or hard.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         try:
@@ -107,18 +111,20 @@ class RenderAssessmentFromTopicView(APIView):
 
     def get(self, request):
         user = request.user
-        topic_obj = Topic.objects.filter(user=user).order_by('-created_at').first()
-        if not topic_obj:
-            return Response({'error': 'No topic found for this user.'}, template_name='assessment/error.html', status=status.HTTP_404_NOT_FOUND)
-
         name = user.username
-        class_name = topic_obj.class_name
-        topic = topic_obj.topic
-        subject = request.GET.get('subject')
-        difficulty = request.GET.get('difficulty', 'medium')
+        class_name = request.GET.get('class_name', 'Not specified')
+        topic = (request.GET.get('topic') or '').strip()
+        subject = (request.GET.get('subject') or '').strip()
+        difficulty = (request.GET.get('difficulty') or 'medium').strip().lower()
 
         if not subject:
             return Response({'error': 'Subject is required.'}, template_name='assessment/error.html', status=status.HTTP_400_BAD_REQUEST)
+
+        if not topic:
+            return Response({'error': 'Topic is required.'}, template_name='assessment/error.html', status=status.HTTP_400_BAD_REQUEST)
+
+        if difficulty not in {'easy', 'medium', 'hard'}:
+            return Response({'error': 'Difficulty must be easy, medium, or hard.'}, template_name='assessment/error.html', status=status.HTTP_400_BAD_REQUEST)
 
         try:
             assessment_data = get_assessment_from_gemini(name, class_name, subject, topic, difficulty)
