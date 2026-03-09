@@ -11,7 +11,6 @@ index = None
 def _get_pinecone_index():
     """
     Lazily initialize Pinecone client and index.
-    Allows server to start even if Pinecone credentials are not configured.
     """
     global pinecone_client, index
     
@@ -33,7 +32,6 @@ def _get_pinecone_index():
 def generate_and_store_embedding(pdf_obj, text):
     """
     Generate embedding for text and store in Pinecone.
-    Returns the embedding_id used for storage.
     """
     try:
         index = _get_pinecone_index()
