@@ -3,12 +3,10 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/topic_model.dart';
 import '../services/api_service.dart';
-import '../services/auth_provider.dart';
 import '../widgets/app_theme.dart';
 import '../widgets/common_widgets.dart';
 

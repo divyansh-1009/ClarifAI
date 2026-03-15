@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
@@ -22,20 +23,21 @@ class ApiException implements Exception {
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([String message = 'Session expired. Please log in again.'])
-      : super(message, statusCode: 401);
+  const UnauthorizedException([
+    super.message = 'Session expired. Please log in again.',
+  ]) : super(statusCode: 401);
 }
 
 class NotFoundException extends ApiException {
-  const NotFoundException([String message = 'Resource not found.'])
-      : super(message, statusCode: 404);
+  const NotFoundException([super.message = 'Resource not found.'])
+    : super(statusCode: 404);
 }
 
 class ValidationException extends ApiException {
   final Map<String, dynamic> errors;
 
-  const ValidationException(String message, this.errors)
-      : super(message, statusCode: 400);
+  const ValidationException(super.message, this.errors)
+    : super(statusCode: 400);
 }
 
 // ─────────────────────────────────────────────
@@ -76,10 +78,19 @@ class _StorageKeys {
 // ─────────────────────────────────────────────
 
 class ApiService {
-  // Use http://10.0.2.2:8000 for Android emulator,
-  // http://localhost:8000 for iOS simulator / web.
-  // static const String _baseUrl = 'http://192.168.137.1/api';
-  static const String _baseUrl = 'http://10.0.2.2:8000/api';
+  static String get _baseUrl {
+    const fromEnv = String.fromEnvironment('API_BASE_URL');
+    if (fromEnv.isNotEmpty) {
+      final sanitized = fromEnv.endsWith('/')
+          ? fromEnv.substring(0, fromEnv.length - 1)
+          : fromEnv;
+      return sanitized.endsWith('/api') ? sanitized : '$sanitized/api';
+    }
+
+    if (kIsWeb) return 'http://localhost:8000/api';
+    if (Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    return 'http://localhost:8000/api';
+  }
 
   static const Duration _timeout = Duration(seconds: 30);
 
@@ -197,10 +208,7 @@ class ApiService {
             messages.add(value.toString());
           }
         });
-        return ValidationException(
-          messages.join('\n'),
-          body,
-        );
+        return ValidationException(messages.join('\n'), body);
       }
     } catch (_) {}
     return ApiException(
@@ -282,16 +290,16 @@ class ApiService {
 
     if (response.statusCode == 200) {
       final json = jsonDecode(response.body) as Map<String, dynamic>;
-      await _saveTokens(
-        json['access'] as String,
-        json['refresh'] as String,
-      );
+      await _saveTokens(json['access'] as String, json['refresh'] as String);
       // Fetch and return the user profile
       return await getCurrentUser();
     }
 
     if (response.statusCode == 401) {
-      throw const ApiException('Invalid username or password.', statusCode: 401);
+      throw const ApiException(
+        'Invalid username or password.',
+        statusCode: 401,
+      );
     }
 
     throw _parseError(response);
@@ -300,10 +308,8 @@ class ApiService {
   /// Returns the currently authenticated user's profile.
   Future<UserModel> getCurrentUser() async {
     final response = await _authenticatedRequest(
-      (headers) => http.get(
-        Uri.parse('$_baseUrl/accounts/me/'),
-        headers: headers,
-      ),
+      (headers) =>
+          http.get(Uri.parse('$_baseUrl/accounts/me/'), headers: headers),
     );
 
     if (response.statusCode == 200) {
@@ -372,12 +378,9 @@ class ApiService {
       final stream = http.ByteStream(pdfFile.openRead());
       final length = await pdfFile.length();
       final fileName = pdfFile.path.split(Platform.pathSeparator).last;
-      request.files.add(http.MultipartFile(
-        'notes',
-        stream,
-        length,
-        filename: fileName,
-      ));
+      request.files.add(
+        http.MultipartFile('notes', stream, length, filename: fileName),
+      );
     }
 
     final streamed = await request.send().timeout(_timeout);
@@ -438,7 +441,10 @@ class ApiService {
     }
 
     if (response.statusCode == 403) {
-      throw const ApiException('You do not have access to this topic.', statusCode: 403);
+      throw const ApiException(
+        'You do not have access to this topic.',
+        statusCode: 403,
+      );
     }
 
     throw _parseError(response);
@@ -473,11 +479,15 @@ class ApiService {
           (outer['error'] as String?) ?? 'Assessment generation failed.',
         );
       }
-      // Backend returns assessment_data as a JSON *string* — parse it.
+      // Backend may return assessment_data as a JSON string or object.
       final rawData = outer['assessment_data'];
       final Map<String, dynamic> assessmentJson;
       if (rawData is String) {
-        assessmentJson = jsonDecode(rawData) as Map<String, dynamic>;
+        try {
+          assessmentJson = jsonDecode(rawData) as Map<String, dynamic>;
+        } catch (_) {
+          throw const ApiException('Invalid assessment JSON from server.');
+        }
       } else if (rawData is Map<String, dynamic>) {
         assessmentJson = rawData;
       } else {

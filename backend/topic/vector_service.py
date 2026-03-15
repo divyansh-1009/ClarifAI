@@ -1,9 +1,11 @@
 import os
 import uuid
-from sentence_transformers import SentenceTransformer
+import time
+import google.generativeai as genai
+from google.api_core.exceptions import ResourceExhausted
 from pinecone import Pinecone
 
-model = SentenceTransformer('all-MiniLM-L6-v2')
+genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
 
 pinecone_client = None
 index = None
@@ -29,13 +31,36 @@ def _get_pinecone_index():
     return index
 
 
+def _generate_embedding(text, task_type="retrieval_document"):
+    """
+    Generate embedding using Google Gemini with retry logic for rate limits.
+    """
+    retries = 3
+    delay = 5
+    for attempt in range(retries):
+        try:
+            result = genai.embed_content(
+                model="models/text-embedding-004",
+                content=text,
+                task_type=task_type
+            )
+            return result['embedding']
+        except ResourceExhausted:
+            if attempt < retries - 1:
+                time.sleep(delay)
+                delay *= 2  # exponential backoff
+            else:
+                raise Exception("Rate limit exhausted (429) for Gemini API after retries.")
+        except Exception as e:
+            raise Exception(f"Google API generation error: {str(e)}")
+
 def generate_and_store_embedding(pdf_obj, text):
     """
     Generate embedding for text and store in Pinecone.
     """
     try:
         index = _get_pinecone_index()
-        embedding = model.encode(text).tolist()
+        embedding = _generate_embedding(text, task_type="retrieval_document")
         embedding_id = str(uuid.uuid4())
         
         index.upsert(vectors=[
@@ -59,7 +84,7 @@ def retrieve_embeddings(query_text, top_k=5):
     """
     try:
         index = _get_pinecone_index()
-        query_embedding = model.encode(query_text).tolist()
+        query_embedding = _generate_embedding(query_text, task_type="retrieval_query")
         results = index.query(vector=query_embedding, top_k=top_k, include_metadata=True)
         return results
     except Exception as e:
