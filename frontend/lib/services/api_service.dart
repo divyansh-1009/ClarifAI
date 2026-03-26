@@ -87,9 +87,9 @@ class ApiService {
       return sanitized.endsWith('/api') ? sanitized : '$sanitized/api';
     }
 
-    if (kIsWeb) return 'http://localhost:8000/api';
-    if (Platform.isAndroid) return 'http://10.0.2.2:8000/api';
-    return 'http://localhost:8000/api';
+    if (kIsWeb) return 'https://clarifai-backend-lwk8.onrender.com/api';
+    if (Platform.isAndroid) return 'https://clarifai-backend-lwk8.onrender.com/api';
+    return 'https://clarifai-backend-lwk8.onrender.com/api';
   }
 
   static const Duration _timeout = Duration(seconds: 30);
