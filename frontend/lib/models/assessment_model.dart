@@ -2,15 +2,22 @@ class Assessment {
   final Metadata metadata;
   final List<Question> questions;
 
-  Assessment({required this.metadata, required this.questions});
+  const Assessment({required this.metadata, required this.questions});
 
   factory Assessment.fromJson(Map<String, dynamic> json) {
     return Assessment(
-      metadata: Metadata.fromJson(json['metadata']),
-      questions: (json['questions'] as List)
-          .map((q) => Question.fromJson(q))
+      metadata: Metadata.fromJson(json['metadata'] as Map<String, dynamic>),
+      questions: (json['questions'] as List<dynamic>)
+          .map((q) => Question.fromJson(q as Map<String, dynamic>))
           .toList(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'metadata': metadata.toJson(),
+      'questions': questions.map((q) => q.toJson()).toList(),
+    };
   }
 }
 
@@ -19,7 +26,7 @@ class Metadata {
   final int totalMarks;
   final int estimatedTime;
 
-  Metadata({
+  const Metadata({
     required this.title,
     required this.totalMarks,
     required this.estimatedTime,
@@ -27,21 +34,31 @@ class Metadata {
 
   factory Metadata.fromJson(Map<String, dynamic> json) {
     return Metadata(
-      title: json['title'] ?? 'Assessment',
-      totalMarks: json['total_marks'] ?? 0,
-      estimatedTime: json['estimated_time_minutes'] ?? 0,
+      title: (json['title'] as String?) ?? 'Assessment',
+      totalMarks: (json['total_marks'] as int?) ?? 0,
+      estimatedTime: (json['estimated_time_minutes'] as int?) ?? 0,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'title': title,
+      'total_marks': totalMarks,
+      'estimated_time_minutes': estimatedTime,
+    };
   }
 }
 
+enum QuestionType { multipleChoice, shortAnswer, problemSolving, unknown }
+
 class Question {
-  final String type;
+  final QuestionType type;
   final int marks;
   final String questionText;
   final List<String>? options;
   final String? answerKey;
 
-  Question({
+  const Question({
     required this.type,
     required this.marks,
     required this.questionText,
@@ -50,12 +67,46 @@ class Question {
   });
 
   factory Question.fromJson(Map<String, dynamic> json) {
+    final rawType = (json['type'] as String?) ?? '';
+    QuestionType type;
+    switch (rawType) {
+      case 'multiple_choice':
+        type = QuestionType.multipleChoice;
+        break;
+      case 'short_answer':
+        type = QuestionType.shortAnswer;
+        break;
+      case 'problem_solving':
+        type = QuestionType.problemSolving;
+        break;
+      default:
+        type = QuestionType.unknown;
+    }
+
+    final rawOptions = json['options'];
+    List<String>? options;
+    if (rawOptions != null && rawOptions is List && rawOptions.isNotEmpty) {
+      options = rawOptions.map((e) => e.toString()).toList();
+    }
+
     return Question(
-      type: json['type'],
-      marks: json['marks'],
-      questionText: json['question_text'],
-      options: json['options'] != null ? List<String>.from(json['options']) : null,
-      answerKey: json['answer_key'],
+      type: type,
+      marks: (json['marks'] as int?) ?? 1,
+      questionText: (json['question_text'] as String?) ?? '',
+      options: options,
+      answerKey: json['answer_key'] as String?,
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type.name,
+      'marks': marks,
+      'question_text': questionText,
+      'options': options,
+      'answer_key': answerKey,
+    };
+  }
+
+  bool get isMultipleChoice => type == QuestionType.multipleChoice;
 }
