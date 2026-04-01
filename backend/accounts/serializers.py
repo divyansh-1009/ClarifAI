@@ -3,6 +3,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 from django.core.mail import send_mail
 from django.conf import settings
+from django.utils import timezone
 from .models import EmailOTP
 
 
@@ -19,11 +20,18 @@ class EmailOTPSerializer(serializers.Serializer):
     def create(self, validated_data):
         """Generate and send OTP."""
         email = validated_data['email']
-        
-        email_otp, created = EmailOTP.objects.get_or_create(email=email)
+
+        email_otp, created = EmailOTP.objects.get_or_create(
+            email=email,
+            defaults={
+                'otp_hash': EmailOTP.hash_otp('000000'),
+                'expires_at': timezone.now(),
+            },
+        )
         
         otp = EmailOTP.generate_otp()
         email_otp.set_otp(otp)
+        email_otp.is_verified = False
         email_otp.save()
         
         subject = "ClarifAI Email Verification"

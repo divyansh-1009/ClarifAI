@@ -40,16 +40,29 @@ class QueryView(generics.GenericAPIView):
 			context_texts = []
 
 		gemini_api_key = os.getenv('GOOGLE_API_KEY')
+		if not gemini_api_key:
+			return Response(
+				{'detail': 'GOOGLE_API_KEY is not configured.'},
+				status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			)
+
 		genai.configure(api_key=gemini_api_key)
-		model = genai.GenerativeModel('gemini-pro')
+		model_name = os.getenv('GEMINI_MODEL', 'gemini-2.5-flash')
+		model = genai.GenerativeModel(model_name)
 
 		if context_texts:
 			prompt = f"Context: {' '.join(context_texts)}\n\nQuestion: {question}\n\nAnswer:"
 		else:
 			prompt = f"Question: {question}\n\nAnswer:"
 
-		response = model.generate_content(prompt)
-		answer = response.text.strip() if hasattr(response, 'text') else str(response)
+		try:
+			response = model.generate_content(prompt)
+			answer = response.text.strip() if hasattr(response, 'text') and response.text else str(response)
+		except Exception as e:
+			return Response(
+				{'detail': f'AI generation failed: {str(e)}'},
+				status=status.HTTP_502_BAD_GATEWAY,
+			)
 
 		return Response(QueryResponseSerializer({
 			'answer': answer,
