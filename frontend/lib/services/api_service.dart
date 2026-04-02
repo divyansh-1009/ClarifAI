@@ -22,20 +22,20 @@ class ApiException implements Exception {
 }
 
 class UnauthorizedException extends ApiException {
-  const UnauthorizedException([String message = 'Session expired. Please log in again.'])
-      : super(message, statusCode: 401);
+  const UnauthorizedException([super.message = 'Session expired. Please log in again.'])
+      : super(statusCode: 401);
 }
 
 class NotFoundException extends ApiException {
-  const NotFoundException([String message = 'Resource not found.'])
-      : super(message, statusCode: 404);
+  const NotFoundException([super.message = 'Resource not found.'])
+      : super(statusCode: 404);
 }
 
 class ValidationException extends ApiException {
   final Map<String, dynamic> errors;
 
-  const ValidationException(String message, this.errors)
-      : super(message, statusCode: 400);
+  const ValidationException(super.message, this.errors)
+      : super(statusCode: 400);
 }
 
 // ─────────────────────────────────────────────
