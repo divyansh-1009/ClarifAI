@@ -31,13 +31,13 @@ SECRET_KEY = 'django-insecure-xese_s@ly3-%50uzjz^8ye#zp-t*t0yid0ykavrp1^*85fgh01
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = [
-    host.strip()
+    host.strip().replace('https://', '').replace('http://', '')
     for host in os.getenv(
         'ALLOWED_HOSTS',
         'localhost,127.0.0.1,10.0.2.2',
     ).split(',')
     if host.strip()
-]
+] + ['.onrender.com']
 
 
 # Application definition
