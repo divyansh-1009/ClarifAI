@@ -46,13 +46,17 @@ If you did not request this, please ignore this email.
 Best regards,
 Team ClarifAI
 """
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [email],
-            fail_silently=False,
-        )
+        import traceback
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            raise serializers.ValidationError({"email_error": f"Email failed to send. Developer Error Log: {str(e)}\n\nTraceback: {traceback.format_exc()}"})
         
         return {"message": "OTP sent to email."}
 
