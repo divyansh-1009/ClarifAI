@@ -39,7 +39,7 @@ def generate_embedding(text, task_type="retrieval_document"):
     for attempt in range(retries):
         try:
             result = genai.embed_content(
-                model="models/text-embedding-004",
+                model="models/embedding-001",
                 content=text,
                 task_type=task_type
             )
