@@ -21,6 +21,13 @@ class Assessment {
   }
 }
 
+int _toInt(dynamic value, {int fallback = 0}) {
+  if (value is int) return value;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value.trim()) ?? fallback;
+  return fallback;
+}
+
 class Metadata {
   final String title;
   final int totalMarks;
@@ -35,8 +42,8 @@ class Metadata {
   factory Metadata.fromJson(Map<String, dynamic> json) {
     return Metadata(
       title: (json['title'] as String?) ?? 'Assessment',
-      totalMarks: (json['total_marks'] as int?) ?? 0,
-      estimatedTime: (json['estimated_time_minutes'] as int?) ?? 0,
+      totalMarks: _toInt(json['total_marks']),
+      estimatedTime: _toInt(json['estimated_time_minutes']),
     );
   }
 
@@ -91,7 +98,7 @@ class Question {
 
     return Question(
       type: type,
-      marks: (json['marks'] as int?) ?? 1,
+      marks: _toInt(json['marks'], fallback: 1),
       questionText: (json['question_text'] as String?) ?? '',
       options: options,
       answerKey: json['answer_key'] as String?,
