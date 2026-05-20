@@ -1,0 +1,35 @@
+name: Backend Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy to Remote Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Configure SSH Key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -p ${{ secrets.SSH_PORT || '22' }} -H ${{ secrets.SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy Code
+        run: |
+          ssh -p ${{ secrets.SSH_PORT || '22' }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
+            cd /var/www/clarifai &&
+            git fetch origin main &&
+            git reset --hard origin/main &&
+            source venv/bin/activate &&
+            pip install -r backend/requirements.txt &&
+            python backend/manage.py migrate &&
+            python backend/manage.py collectstatic --no-input &&
+            sudo systemctl restart gunicorn
+          "

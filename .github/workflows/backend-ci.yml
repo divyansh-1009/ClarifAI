@@ -1,0 +1,75 @@
+name: Backend Continuous Integration with Auto-Merge
+
+on:
+  push:
+    branches-ignore:
+      - main 
+
+permissions:
+  contents: write
+
+jobs:
+  validate-and-merge:
+    name: Validate and Auto-Merge
+    runs-on: ubuntu-latest
+
+    env:
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DEBUG: 'False'
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      PINECONE_API_KEY: ${{ secrets.PINECONE_API_KEY }}
+      PINECONE_ENV: ${{ secrets.PINECONE_ENV }}
+      PINECONE_INDEX_NAME: ${{ secrets.PINECONE_INDEX_NAME }}
+      EMAIL_HOST: ${{ secrets.EMAIL_HOST }}
+      EMAIL_PORT: ${{ secrets.EMAIL_PORT }}
+      EMAIL_USE_TLS: ${{ secrets.EMAIL_USE_TLS }}
+      EMAIL_HOST_USER: ${{ secrets.EMAIL_HOST_USER }}
+      EMAIL_HOST_PASSWORD: ${{ secrets.EMAIL_HOST_PASSWORD }}
+      DEFAULT_FROM_EMAIL: ${{ secrets.DEFAULT_FROM_EMAIL }}
+      DATABASE_URL: ''
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: 'backend/requirements.txt'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run Django System Checks
+        run: |
+          cd backend
+          python manage.py check
+
+      - name: Run Database Migrations
+        run: |
+          cd backend
+          python manage.py migrate
+
+      - name: Run Tests
+        run: |
+          cd backend
+          python manage.py test
+
+      - name: Auto-Merge to main Branch
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          
+          git fetch origin main
+          
+          git checkout main
+          
+          git merge --no-ff origin/${{ github.ref_name }} -m "Auto-merge branch '${{ github.ref_name }}' after successful CI validation"
+          
+          git push origin main
